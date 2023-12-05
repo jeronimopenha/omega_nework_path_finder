@@ -10,20 +10,35 @@ class Omega_4_4:
     def set_config(self, config: list(list(list(list())))):
         self.config = config
 
-    def exec(self, input: list(list())) -> list(list()):
+    def exec(self, input: list()) -> list(list()):
         N_LAYERS = self.N_LAYERS
-        output = [[] for i in range(N_LAYERS)]
+        data = input.copy()
         for l in range(N_LAYERS):
             la = self.layers[l]
             la.set_config(self.config[l])
-            output[l] = la.exec(input[l])
-        return self.rearrange_output(output)
-
-    def rearrange_output(self, output: list(list())):
-        return output
+            data = la.exec(data)
+        return data
 
 
-# l = Layer_4()
-# l.set_config([[[1, 0], [1, 1], [0, 0], [0, 0]], [[0, 0], [0, 0], [0, 0], [0, 0]], [
-#             [0, 0], [0, 0], [0, 0], [0, 0]], [[0, 0], [0, 0], [0, 0], [0, 0]]])
-# print(l.exec([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]))
+config = [
+    [
+        [[1, 0], [1, 1], [0, 0], [0, 0]], [[0, 0], [0, 0], [0, 0], [0, 0]],
+        [[0, 0], [0, 0], [0, 0], [0, 0]], [[0, 0], [0, 0], [0, 0], [0, 0]]
+    ],
+    [
+        [[1, 0], [1, 1], [0, 0], [0, 0]], [[0, 0], [0, 0], [0, 0], [0, 0]],
+        [[0, 0], [0, 0], [0, 0], [0, 0]], [[0, 0], [0, 0], [0, 0], [0, 0]]
+    ],
+    [
+        [[1, 0], [1, 1], [0, 0], [0, 0]], [[0, 0], [0, 0], [0, 0], [0, 0]],
+        [[0, 0], [0, 0], [0, 0], [0, 0]], [[0, 0], [0, 0], [0, 0], [0, 0]]
+    ],
+    [
+        [[1, 0], [1, 1], [0, 0], [0, 0]], [[0, 0], [0, 0], [0, 0], [0, 0]],
+        [[0, 0], [0, 0], [0, 0], [0, 0]], [[0, 0], [0, 0], [0, 0], [0, 0]]
+    ]
+]
+input = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+o = Omega_4_4()
+o.set_config(config)
+print(o.exec(input))

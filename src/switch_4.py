@@ -19,8 +19,3 @@ class Switch_4:
                     if self.config[o][0] == 0 or (self.config[o][0] == 1 and self.config[o][1] == i):
                         output[o] = 1
         return output
-
-
-# s = switch_4()
-# s.set_config([[1, 1], [1, 0], [0, 0], [0, 0]])
-# print(s.get_possible_output([1, 0, 0, 0]))
