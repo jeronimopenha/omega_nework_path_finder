@@ -1,19 +1,18 @@
-class Switch_4:
-    def __init__(self):
+# switch path fider extra layer
+class Switch_p_f:
+    def __init__(self, radix: int = 4):
         self.config = []
-        self.N_IN = 4
-        self.N_OUT = 4
+        self.radix = radix
 
     def set_config(self, config: list(list())):
         self.config = config
 
     def exec(self, input: list()) -> list():
-        N_IN = self.N_IN
-        N_OUT = self.N_OUT
-        output = [0 for i in range(N_OUT)]
-        for i in range(N_IN):
+        radix = self.radix
+        output = [0 for i in range(radix)]
+        for i in range(radix):
             if input[i] == 1:
-                for o in range(N_OUT):
+                for o in range(radix):
                     # primeira condicao: saida livre
                     # segunda condicao: saida ocupada, mas multicast permitido
                     if self.config[o][0] == 0 or (self.config[o][0] == 1 and self.config[o][1] == i):
