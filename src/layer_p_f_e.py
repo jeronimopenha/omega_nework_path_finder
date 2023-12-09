@@ -1,40 +1,24 @@
-from switch_p_f import Switch_p_f
+from layer import Layer
+from switch_p_f_e import Switch_p_f_e
 from math import log2, ceil
 
 # Layer path finder extra layer
 
 
-class Layer_p_f_e:
-    def __init__(self, n_input: int = 16, radix: int = 4):
-        self.config = []
-        self.n_input = n_input
-        self.n_switch = ceil(log2(n_input))
-        self.radix = radix
-        self.switches = [Switch_p_f(radix) for i in range(self.n_switch)]
+class Layer_p_f_e(Layer):
 
-    def set_config(self, config: list(list(list()))):
-        self.config = config
+    def __init__(self, n_input: int = 16, radix: int = 4, window_bits: int = 4):
+        super().__init__(n_input, radix, window_bits)
+        self.switches = [Switch_p_f_e(radix) for i in range(self.n_switch)]
 
-    def exec(self, input: list()) -> list(list()):
+    def exec(self, output: list()) -> list(list()):
         n_switch = self.n_switch
         radix = self.radix
-        shuffled_input = self.shuffled_input(input)
-        output = []
+        input = []
         for s in range(n_switch):
             sw = self.switches[s]
-            sw.set_config(self.config[s])
+            sw.set_switch_config(self.layer_config[s])
             offset = s * radix
-            tmp = sw.exec(shuffled_input[offset:offset + radix])
-            output = output + tmp
-        return output
-
-    def shuffle_input(self, input: list(list())):
-        radix = self.radix
-        sh = ceil(log2(radix))
-        shuffled_input = []
-        for i in range(len(input)):
-            msb = i << sh
-            lsb = i >> (radix - sh)
-            idx = msb | lsb
-            shuffled_input[idx] = input[i]
-        return shuffled_input
+            tmp = sw.exec(output[offset:offset + radix])
+            input = input + tmp
+        return self.shuffle_input(input)

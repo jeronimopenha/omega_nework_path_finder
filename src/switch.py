@@ -1,11 +1,11 @@
 # switch path fider
-class Switch_p_f:
+class Switch:
     def __init__(self, radix: int = 4):
-        self.config = []
+        self.switch_config = []
         self.radix = radix
 
-    def set_config(self, config: list(list())):
-        self.config = config
+    def set_switch_config(self, switch_config: list(list())):
+        self.switch_config = switch_config
 
     def exec(self, input: list()) -> list():
         radix = self.radix
@@ -15,6 +15,6 @@ class Switch_p_f:
                 for o in range(radix):
                     # primeira condicao: saida livre
                     # segunda condicao: saida ocupada, mas multicast permitido
-                    if self.config[o][0] == 0 or (self.config[o][0] == 1 and self.config[o][1] == i):
+                    if self.switch_config[o][0] == 0 or (self.switch_config[o][0] == 1 and self.switch_config[o][1] == i):
                         output[o] = 1
         return output
