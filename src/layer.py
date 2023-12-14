@@ -10,9 +10,9 @@ class Layer:
         self.n_input = n_input
         self.radix = radix
         self.window_bits = window_bits
-        self.n_switch = n_input//radix  # ceil(log2(n_input))
+        self.n_switches = n_input//radix  # ceil(log2(n_input))
         self.sh = ceil(log2(radix))
-        self.switches = [Switch(radix) for i in range(self.n_switch)]
+        self.switches = [Switch(radix) for i in range(self.n_switches)]
         self.window_mask = 0
         for i in range(self.window_bits):
             self.window_mask = self.window_mask << 1 | 1
@@ -21,7 +21,7 @@ class Layer:
         self.layer_config = layer_config
 
     def exec(self, input: list()) -> list(list()):
-        n_switch = self.n_switch
+        n_switch = self.n_switches
         radix = self.radix
         shuffled_input = self.shuffle_input(input)
         output = []

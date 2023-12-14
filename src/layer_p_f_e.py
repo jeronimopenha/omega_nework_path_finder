@@ -9,10 +9,10 @@ class Layer_p_f_e(Layer):
 
     def __init__(self, n_input: int = 16, radix: int = 4, window_bits: int = 4):
         super().__init__(n_input, radix, window_bits)
-        self.switches = [Switch_p_f_e(radix) for i in range(self.n_switch)]
+        self.switches = [Switch_p_f_e(radix) for i in range(self.n_switches)]
 
     def exec(self, output: list()) -> list(list()):
-        n_switch = self.n_switch
+        n_switch = self.n_switches
         radix = self.radix
         input = []
         for s in range(n_switch):
