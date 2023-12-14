@@ -2,7 +2,8 @@ from layer import Layer
 from layer_p_f_e import Layer_p_f_e
 from priority_encoder import Priority_encoder
 from math import ceil, log, log2
-import pygraphviz as pgv
+import random as rnd
+
 
 # Omega network path finder
 
@@ -33,11 +34,10 @@ class Omega_p_f:
         self.mask = self.layers_p_f[0].window_mask
         self.sh = self.layers_p_f[0].sh
         self.ports_p_switch = self.radix
-        self.ports_p_layer = self.ports_p_switch * self.n_switches_p_layer
 
         self.inputs = {"in%d" % i: [0] for i in range(n_input)}
         self.outputs = {"out%d" % i: [0] for i in range(n_input)}
-        self.ports_in = {"i%d_%d_%d" % (l, s, p): [0]
+        self.ports_in = {"i%d_%d_%d" % (l, s, p): ""
                          for l in range(self.tot_layers)
                          for s in range(self.n_switches_p_layer)
                          for p in range(self.ports_p_switch)
@@ -47,6 +47,14 @@ class Omega_p_f:
                           for s in range(self.n_switches_p_layer)
                           for p in range(self.ports_p_switch)
                           }
+        self.next_color = 0
+        self.rand_color = []
+        for i in range(self.n_input):
+            r = rnd.randint(0, 255)
+            g = rnd.randint(0, 255)
+            b = rnd.randint(0, 255)
+            rgb = r << 16 | g << 8 | g
+            self.rand_color.append("#{:06x}".format(rgb))
         self.create_base_graph()
 
     def set_omega_config(self, omega_config: list(list(list(list())))):
@@ -90,11 +98,45 @@ class Omega_p_f:
             self.dot += "out%d [label=\"out%d\",fontsize=8, shape=octagon, fillcolor=white, color=grey89];\n" % (
                 i, i)
         for k in self.ports_in.keys():
+            self.ports_in[k] = "%s [label=\"%s\",fontsize=8, fillcolor=white, color=grey89];" % (
+                k, k)
             self.dot += "%s [label=\"%s\",fontsize=8, fillcolor=white, color=grey89];\n" % (
                 k, k)
         for k in self.ports_out.keys():
             self.dot += "%s [label=\"%s\",fontsize=8, fillcolor=white, color=grey89];\n" % (
                 k, k)
+
+        # Structural Layout
+        self.dot += "edge [constraint=false];\n"
+
+        # inports to outports
+        for l in range(self.tot_layers):
+            for s in range(self.n_switches_p_layer):
+                for i in range(self.ports_p_switch):
+                    for o in range(self.ports_p_switch):
+                        self.dot += "i%d_%d_%d -> o%d_%d_%d [style=\"penwidth(0.1)\", color=grey89];\n" % (
+                            l, s, i, l, s, o)
+        # Inputs to inports
+        for i in range(self.n_input):
+            msw = (i << self.sh) & self.mask
+            lsw = i >> (self.radix - self.sh)
+            idx = msw | lsw
+            self.dot += "in%d -> i0_%d_%d [style=\"penwidth(0.1)\", color=grey89];\n" % (
+                i, idx // self.ports_p_switch, idx % self.ports_p_switch)
+        # outports to outputs
+        for i in range(self.n_input):
+            l = self.tot_layers-1
+            off_l = l * self.n_input
+            self.dot += "o%d_%d_%d -> out%d [style=\"penwidth(0.1)\", color=grey89];\n" % (
+                l, i // self.ports_p_switch, i % self.ports_p_switch, i)
+        # outports to inports
+        for l in range(self.tot_layers-1):
+            for i in range(self.n_input):
+                msw = (i << self.sh) & self.mask
+                lsw = i >> (self.radix - self.sh)
+                idx = msw | lsw
+                self.dot += "o%d_%d_%d -> i%d_%d_%d [style=\"penwidth(0.1)\", color=grey89];\n" % (
+                    l, i // self.ports_p_switch, i % self.ports_p_switch, l+1, idx // self.ports_p_switch, idx % self.ports_p_switch)
 
         # Vertical Layout
         self.dot += "edge [constraint=true, style=invis];\n"
@@ -111,6 +153,7 @@ class Omega_p_f:
         self.dot = self.dot[:-4]
         self.dot += ";\n"
 
+        # Vertical Layout
         for l in range(self.tot_layers):
             for s in range(self.n_switches_p_layer):
                 self.dot += "i%d_%d_0 -> " % (l, s)
@@ -141,18 +184,27 @@ class Omega_p_f:
         with open(self.dot_file, "w") as file:
             file.write(self.dot)
         file.close()
-        a = 1
-        # header = "digraph G {\n"
-        # header += "\trankdir=TB;\n"
-        # header += "\tsplines=ortho;\n"
-        # footer = "}\n"
-        # with open(dot_file, "w") as file:
-        #    file.write(header)
-        # creatin the subgrapths
-        #    for l in range(n_layers + n_extra_layers):
-        # pass
-        #    file.write(footer)
-        # file.close()
+
+    def update_base_dot(self):
+        dot_lines = self.dot.split('\n')
+        for l in range(self.tot_layers):
+            for s in range(self.n_switches_p_layer):
+                for p in range(self.ports_p_switch):
+                    used = self.omega_config[l][s][p][0]
+                    if used:
+                        in_port_n = self.omega_config[l][s][p][1]
+                        in_port_key = "i%d_%d_%d" % (l, s, in_port_n)
+                        for line in dot_lines:
+                            if self.ports_in[in_port_key] in line:
+                                new_line = self.ports_in[in_port_key].replace(
+                                    "color=grey89", "color=\"%s\""% self.rand_color[self.next_color])
+                                self.dot = self.dot.replace(line+"\n", new_line+"\n")
+                                break
+        with open(self.dot_file, "w") as file:
+            file.write(self.dot)
+        self.next_color = self.next_color + 1
+        file.close()
+                                
 
 
 if __name__ == "__main__":
@@ -206,8 +258,8 @@ if __name__ == "__main__":
             for r in range(radix):
                 omega_config[l][s].append([0, 0])
 
+    opf.set_omega_config(omega_config)
     for i in range(n_input):
-        opf.set_omega_config(omega_config)
         v, path_config = opf.path_finder(targets[i], i, 1)
         if not v:
             print("impossible routing")
@@ -226,5 +278,6 @@ if __name__ == "__main__":
             omega_config[layer_counter][switch_n][switch_out][0] = 1
             omega_config[layer_counter][switch_n][switch_out][1] = in_n
             layer_counter += 1
-        # opf.create_dot()
+        opf.set_omega_config(omega_config)
+        opf.update_base_dot()
     a = 1
