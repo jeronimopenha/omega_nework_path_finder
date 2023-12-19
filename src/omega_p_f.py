@@ -42,7 +42,7 @@ class Omega_p_f:
                          for s in range(self.n_switches_p_layer)
                          for p in range(self.ports_p_switch)
                          }
-        self.ports_out = {"o%d_%d_%d" % (l, s, p): [0, 0]
+        self.ports_out = {"o%d_%d_%d" % (l, s, p): ""
                           for l in range(self.tot_layers)
                           for s in range(self.n_switches_p_layer)
                           for p in range(self.ports_p_switch)
@@ -50,9 +50,9 @@ class Omega_p_f:
         self.next_color = 0
         self.rand_color = []
         for i in range(self.n_input):
-            r = rnd.randint(0, 255)
-            g = rnd.randint(0, 255)
-            b = rnd.randint(0, 255)
+            r = rnd.randint(0, 240)
+            g = rnd.randint(0, 240)
+            b = rnd.randint(0, 240)
             rgb = r << 16 | g << 8 | g
             self.rand_color.append("#{:06x}".format(rgb))
         self.create_base_graph()
@@ -90,6 +90,7 @@ class Omega_p_f:
     def create_base_graph(self):
         self.dot = "digraph layout{\nrankdir=TB;\nsplines=ortho;\n"
         self.dot += "node [style=filled shape=square fixedsize=true width=0.6];\n"
+        in_out_ports_str = "%s [label=\"%s\",fontsize=8, fillcolor=white, color=grey89];"
 
         for i in range(self.n_input):
             self.dot += "in%d [label=\"in%d\",fontsize=8, shape=octagon, fillcolor=white, color=grey89];\n" % (
@@ -98,13 +99,11 @@ class Omega_p_f:
             self.dot += "out%d [label=\"out%d\",fontsize=8, shape=octagon, fillcolor=white, color=grey89];\n" % (
                 i, i)
         for k in self.ports_in.keys():
-            self.ports_in[k] = "%s [label=\"%s\",fontsize=8, fillcolor=white, color=grey89];" % (
-                k, k)
-            self.dot += "%s [label=\"%s\",fontsize=8, fillcolor=white, color=grey89];\n" % (
-                k, k)
+            self.ports_in[k] = in_out_ports_str % (k, k)
+            self.dot += self.ports_in[k] + "\n"
         for k in self.ports_out.keys():
-            self.dot += "%s [label=\"%s\",fontsize=8, fillcolor=white, color=grey89];\n" % (
-                k, k)
+            self.ports_out[k] = in_out_ports_str % (k, k)
+            self.dot += self.ports_out[k] + "\n"
 
         # Structural Layout
         self.dot += "edge [constraint=false];\n"
@@ -194,17 +193,23 @@ class Omega_p_f:
                     if used:
                         in_port_n = self.omega_config[l][s][p][1]
                         in_port_key = "i%d_%d_%d" % (l, s, in_port_n)
+                        out_port_n = p
+                        out_port_key = "o%d_%d_%d" % (l, s, out_port_n)
                         for line in dot_lines:
                             if self.ports_in[in_port_key] in line:
                                 new_line = self.ports_in[in_port_key].replace(
-                                    "color=grey89", "color=\"%s\""% self.rand_color[self.next_color])
-                                self.dot = self.dot.replace(line+"\n", new_line+"\n")
-                                break
+                                    "color=grey89", "color=\"%s\"" % self.rand_color[self.next_color])
+                                self.dot = self.dot.replace(
+                                    line+"\n", new_line+"\n")
+                            if self.ports_out[out_port_key] in line:
+                                new_line = self.ports_out[out_port_key].replace(
+                                    "color=grey89", "color=\"%s\"" % self.rand_color[self.next_color])
+                                self.dot = self.dot.replace(
+                                    line+"\n", new_line+"\n")
         with open(self.dot_file, "w") as file:
             file.write(self.dot)
         self.next_color = self.next_color + 1
         file.close()
-                                
 
 
 if __name__ == "__main__":
