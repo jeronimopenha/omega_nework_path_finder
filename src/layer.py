@@ -1,7 +1,7 @@
 from switch import Switch
 from math import log2, ceil
 
-# Layer path finder
+# Layer pathfinder
 
 
 class Layer:
@@ -17,30 +17,30 @@ class Layer:
         for i in range(self.window_bits):
             self.window_mask = self.window_mask << 1 | 1
 
-    def set_layer_config(self, layer_config: list(list(list()))):
+    def set_layer_config(self, layer_config: list[list[list]]):
         self.layer_config = layer_config
 
-    def exec(self, input: list()) -> list(list()):
+    def exec(self, l_input: list) -> list[list]:
         n_switch = self.n_switches
         radix = self.radix
-        shuffled_input = self.shuffle_input(input)
-        output = []
+        shuffled_input = self.shuffle_input(l_input)
+        l_output = []
         for s in range(n_switch):
             sw = self.switches[s]
             sw.set_switch_config(self.layer_config[s])
             offset = s * radix
             tmp = sw.exec(shuffled_input[offset:offset + radix])
-            output = output + tmp
-        return output
+            l_output = l_output + tmp
+        return l_output
 
-    def shuffle_input(self, input: list(list())):
+    def shuffle_input(self, l_input: list[list]):
         mask = self.window_mask
         radix = self.radix
         sh = self.sh
-        shuffled_input = [None for i in range(len(input))]
-        for i in range(len(input)):
+        shuffled_input = [None for i in range(len(l_input))]
+        for i in range(len(l_input)):
             msw = (i << sh) & mask
             lsw = i >> (radix - sh)
             idx = msw | lsw
-            shuffled_input[idx] = input[i]
+            shuffled_input[idx] = l_input[i]
         return shuffled_input
