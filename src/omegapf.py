@@ -36,7 +36,7 @@ class OmegaPF:
         self.structural_dot = ""
         self.graph_edges_constraint = ""
 
-        self.tot_layers = self.n_layers + self.n_extra_layers
+        self.total_layers = self.n_layers + self.n_extra_layers
         self.n_switches_p_layer = self.layers_p_f[0].n_switches
         self.mask = self.layers_p_f[0].window_mask
         self.sh = self.layers_p_f[0].sh
@@ -44,23 +44,24 @@ class OmegaPF:
 
         self.in_out_str = "%s [label=\"%s\",fontsize=8, shape=octagon, fillcolor=white, color=\"%s\"];\n"
         self.switch_ports_str = "%s [label=\"%s\",fontsize=8, fillcolor=white, color=\"%s\"];\n"
-        self.graph_edges_str = "%s [style=\"penwidth(0.1)\", color=\"%s\"];\n"
+        self.graph_edges_str = "%s [style=\"penwidth(0.1)\", arrowsize=0.5, color=\"%s\"];\n"
 
         self.inputs = {}
         self.outputs = {}
         self.switches_in = {}
         self.switches_out = {}
         self.graph_edges = {}
+        self.key_sw_in_srch_edg = {}
+        self.key_out_srch_edg = {}
 
         self.MIN_COLOR_PARAM = 0
         self.MAX_COLOR_PARAM = 240
-        self.rand_color = self.create_random_color()
+        self.rand_color = self.generate_random_color()
 
         self.init_base_dot()
         self.write_dot()
-        # self.update_base_dot()
 
-    def create_random_color(self) -> str:
+    def generate_random_color(self) -> str:
         red = _rnd.randint(self.MIN_COLOR_PARAM, self.MAX_COLOR_PARAM)
         green = _rnd.randint(self.MIN_COLOR_PARAM, self.MAX_COLOR_PARAM)
         blue = _rnd.randint(self.MIN_COLOR_PARAM, self.MAX_COLOR_PARAM)
@@ -118,6 +119,7 @@ class OmegaPF:
     def init_base_dot(self):
         self.dot_header = "digraph layout{\nrankdir=TB;\nsplines=ortho;\n"
         self.dot_header += "node [style=filled shape=square fixedsize=true width=0.6];\n"
+        self.dot_header += "nodesep=0.5;\n"
         self.dot_footer = "}\n"
 
         # nodes
@@ -128,7 +130,7 @@ class OmegaPF:
             output_key = "out%d" % i
             self.outputs[output_key] = [self.in_out_str %
                                         (output_key, output_key, "%s"), "grey89"]
-        for l in range(self.tot_layers):
+        for l in range(self.total_layers):
             for s in range(self.n_switches_p_layer):
                 for p in range(self.ports_p_switch):
                     sw_in_key = "si%d_%d_%d" % (l, s, p)
@@ -155,7 +157,7 @@ class OmegaPF:
         self.structural_dot = self.structural_dot[:-4]
         self.structural_dot += ";\n"
 
-        for l in range(self.tot_layers):
+        for l in range(self.total_layers):
             for s in range(self.n_switches_p_layer):
                 self.structural_dot += "si%d_%d_0 -> " % (l, s)
                 for p in range(1, self.ports_p_switch):
@@ -163,7 +165,7 @@ class OmegaPF:
             self.structural_dot = self.structural_dot[:-4]
             self.structural_dot += ";\n"
 
-        for l in range(self.tot_layers):
+        for l in range(self.total_layers):
             for s in range(self.n_switches_p_layer):
                 self.structural_dot += "so%d_%d_0 -> " % (l, s)
                 for p in range(1, self.ports_p_switch):
@@ -171,10 +173,10 @@ class OmegaPF:
             self.structural_dot = self.structural_dot[:-4]
             self.structural_dot += ";\n"
 
-        # Horizotal Layout
+        # Horizontal Layout
         for i in range(self.n_input):
             self.structural_dot += "rank = same {in%d -> " % i
-            for l in range(self.tot_layers):
+            for l in range(self.total_layers):
                 self.structural_dot += "si%d_%d_%d -> " % (l, i //
                                                            self.ports_p_switch, i % self.ports_p_switch)
                 self.structural_dot += "so%d_%d_%d -> " % (l, i //
@@ -184,135 +186,77 @@ class OmegaPF:
         # graph layout
         self.graph_edges_constraint = "edge [constraint=false, style=\"\"];\n"
         # switch inports to switch outports edges
-        for l in range(self.tot_layers):
+        for l in range(self.total_layers):
             for s in range(self.n_switches_p_layer):
                 for i in range(self.ports_p_switch):
                     for o in range(self.ports_p_switch):
-                        key = "si%d_%d_%d -> so%d_%d_%d" % (l, s, i, l, s, o)
+                        a = "si%d_%d_%d" % (l, s, i)
+                        b = "so%d_%d_%d" % (l, s, o)
+                        key = "%s -> %s" % (a, b)
                         self.graph_edges[key] = [self.graph_edges_str % (key, "%s"), "grey89"]
         # Inputs to switch inports edges
         for i in range(self.n_input):
             msw = (i << self.sh) & self.mask
             lsw = i >> (self.radix - self.sh)
             idx = msw | lsw
-            key = "in%d -> si0_%d_%d" % (i, idx // self.ports_p_switch, idx % self.ports_p_switch)
+            a = "in%d" % (i)
+            b = "si0_%d_%d" % (idx // self.ports_p_switch, idx % self.ports_p_switch)
+            key = "%s -> %s" % (a, b)
             self.graph_edges[key] = [self.graph_edges_str % (key, "%s"), "grey89"]
+            self.key_sw_in_srch_edg[b] = [key, a]
 
         # switch outports to outputs
         for i in range(self.n_input):
-            l = self.tot_layers - 1
-            key = "so%d_%d_%d -> out%d" % (l, i // self.ports_p_switch, i % self.ports_p_switch, i)
+            l = self.total_layers - 1
+            a = "so%d_%d_%d" % (l, i // self.ports_p_switch, i % self.ports_p_switch)
+            b = "out%d" % i
+            key = "%s -> %s" % (a, b)
             self.graph_edges[key] = [self.graph_edges_str % (key, "%s"), "grey89"]
+            self.key_out_srch_edg[a] = [key, b]
         # outports to inports
-        for l in range(self.tot_layers - 1):
+        for l in range(self.total_layers - 1):
             for i in range(self.n_input):
                 msw = (i << self.sh) & self.mask
                 lsw = i >> (self.radix - self.sh)
                 idx = msw | lsw
-                key = "so%d_%d_%d -> si%d_%d_%d" % (
-                    l, i // self.ports_p_switch, i % self.ports_p_switch, l + 1, idx // self.ports_p_switch,
-                    idx % self.ports_p_switch)
+                a = "so%d_%d_%d" % (l, i // self.ports_p_switch, i % self.ports_p_switch)
+                b = "si%d_%d_%d" % (l + 1, idx // self.ports_p_switch, idx % self.ports_p_switch)
+                key = "%s -> %s" % (a, b)
                 self.graph_edges[key] = [self.graph_edges_str % (key, "%s"), "grey89"]
+                self.key_sw_in_srch_edg[b] = [key, a]
 
     def update_base_dot(self):
-        dot_lines = self.structural_dot.split('\n')
-        for l in range(self.tot_layers):
+        self.rand_color = self.generate_random_color()
+        for l in range(self.total_layers):
             for s in range(self.n_switches_p_layer):
                 for p in range(self.ports_p_switch):
                     used = self.omega_config[l][s][p][0]
+                    sw_i_port_n = self.omega_config[l][s][p][1]
+                    sw_i_port_key = "si%d_%d_%d" % (l, s, sw_i_port_n)
+                    sw_o_port_n = p
+                    sw_o_port_key = "so%d_%d_%d" % (l, s, sw_o_port_n)
+                    sw_io_edge_key = "%s -> %s" % (sw_i_port_key, sw_o_port_key)
+                    sw_i_edge_key = self.key_sw_in_srch_edg[sw_i_port_key][0]
+
                     if used:
-                        in_port_n = self.omega_config[l][s][p][1]
-                        in_port_key = "i%d_%d_%d" % (l, s, in_port_n)
-                        out_port_n = p
-                        out_port_key = "o%d_%d_%d" % (l, s, out_port_n)
-                        for line in dot_lines:
-                            if self.switches_in[in_port_key] in line:
-                                new_line = self.switches_in[in_port_key].replace(
-                                    "color=grey89", "color=\"%s\"" % self.rand_color[self.next_color])
-                                self.structural_dot = self.structural_dot.replace(
-                                    line + "\n", new_line + "\n")
-                            if self.switches_out[out_port_key] in line:
-                                new_line = self.switches_out[out_port_key].replace(
-                                    "color=grey89", "color=\"%s\"" % self.rand_color[self.next_color])
-                                self.structural_dot = self.structural_dot.replace(
-                                    line + "\n", new_line + "\n")
-        with open(self.dot_file, "w") as file:
-            file.write(self.structural_dot)
-        self.next_color = self.next_color + 1
-        file.close()
+                        if self.switches_in[sw_i_port_key][1] == "grey89":
+                            self.switches_in[sw_i_port_key][1] = self.rand_color
+                        if self.switches_out[sw_o_port_key][1] == "grey89":
+                            self.switches_out[sw_o_port_key][1] = self.rand_color
+                        if self.graph_edges[sw_io_edge_key][1] == "grey89":
+                            self.graph_edges[sw_io_edge_key][1] = self.rand_color
+                        if self.graph_edges[sw_i_edge_key][1] == "grey89":
+                            self.graph_edges[sw_i_edge_key][1] = self.rand_color
+                        if l == 0:
+                            input_key = self.key_sw_in_srch_edg[sw_i_port_key][1]
+                            if self.inputs[input_key][1] == "grey89":
+                                self.inputs[input_key][1] = self.rand_color
+                        if l == self.total_layers - 1:
+                            output_k = self.key_out_srch_edg[sw_o_port_key][1]
+                            if self.outputs[output_k][1] == "grey89":
+                                self.outputs[output_k][1] = self.rand_color
+                            output_edg_key = self.key_out_srch_edg[sw_o_port_key][0]
+                            if self.graph_edges[output_edg_key][1] == "grey89":
+                                self.graph_edges[output_edg_key][1] = self.rand_color
 
-
-if __name__ == "__main__":
-    n_input = 16
-    radix = 4
-    n_extra_layers = 2
-
-    opf = OmegaPF(n_input, radix, n_extra_layers)
-
-    n_layers = opf.n_layers
-    switch_conf_bits = opf.switch_conf_bits
-    window_bits = opf.window_bits
-    extra_layers_bits = opf.extra_layers_bits
-    total_config_bits = opf.total_config_bits
-    n_switches_layer = opf.layers_p_f[0].n_switches
-
-    window_mask = opf.layers_p_f[0].window_mask
-    block_mask = window_mask
-    n_switch_mask = 0
-    for i in range(switch_conf_bits):
-        n_switch_mask = n_switch_mask << 1 | 1
-        block_mask = block_mask << 1 | 1
-    window_mask_s = bin(window_mask)
-    block_mask_s = bin(block_mask)
-    n_switch_mask_s = bin(n_switch_mask)
-
-    targets = [0 for i in range(n_input)]
-
-    targets[0] = 0
-    targets[1] = 3
-    targets[2] = 4
-    targets[3] = 7
-    targets[4] = 8
-    targets[5] = 11
-    targets[6] = 12
-    targets[7] = 15
-    targets[8] = 14
-    targets[9] = 13
-    targets[10] = 10
-    targets[11] = 9
-    targets[12] = 6
-    targets[13] = 5
-    targets[14] = 2
-    targets[15] = 1
-
-    omega_config = []
-    for l in range(n_layers + n_extra_layers):
-        omega_config.append([])
-        for s in range(n_switches_layer):
-            omega_config[l].append([])
-            for r in range(radix):
-                omega_config[l][s].append([0, 0])
-
-    opf.set_omega_config(omega_config)
-    for i in range(n_input):
-        v, path_config = opf.path_finder(targets[i], i, _Penum.FIRST)
-        if not v:
-            print("impossible routing")
-            exit()
-        path_config_s = bin(path_config)
-        layer_counter = 0
-        for l in range(total_config_bits, window_bits + switch_conf_bits - 1, -switch_conf_bits):
-            block = path_config >> l - window_bits - switch_conf_bits
-            blocks = bin(block)
-            in_n = block >> window_bits & n_switch_mask
-            in_s = bin(in_n)
-            switch_n = block >> switch_conf_bits & n_switch_mask
-            switch_n_s = bin(switch_n)
-            switch_out = block & n_switch_mask
-            switch_out_s = bin(switch_out)
-            omega_config[layer_counter][switch_n][switch_out][0] = 1
-            omega_config[layer_counter][switch_n][switch_out][1] = in_n
-            layer_counter += 1
-        opf.set_omega_config(omega_config)
-        # opf.update_base_dot()
-    a = 1
+        self.write_dot()
