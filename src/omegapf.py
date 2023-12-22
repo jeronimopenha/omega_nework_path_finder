@@ -104,7 +104,7 @@ class OmegaPF:
         target_data = [0 for _ in range(n_input)]
         target_data[target] = 1
         n_extra_layers = self.n_extra_layers
-        for l in range(n_extra_layers - 1, 0 - 1, -1):
+        for l in range(n_extra_layers - 1, -1, -1):
             la = self.layers_p_f_e[l]
             la.set_layer_config(self.omega_config[l + n_layers])
             target_data = la.exec(target_data)
@@ -260,3 +260,79 @@ class OmegaPF:
                                 self.graph_edges[output_edg_key][1] = self.rand_color
 
         self.write_dot()
+
+
+if __name__ == "__main__":
+    n_input = 16
+    radix = 4
+    n_extra_layers = 2
+
+    opf = OmegaPF(n_input, radix, n_extra_layers)
+
+    n_layers = opf.n_layers
+    switch_conf_bits = opf.switch_conf_bits
+    window_bits = opf.window_bits
+    extra_layers_bits = opf.extra_layers_bits
+    total_config_bits = opf.total_config_bits
+    n_switches_layer = opf.layers_p_f[0].n_switches
+
+    window_mask = opf.layers_p_f[0].window_mask
+    block_mask = window_mask
+    n_switch_mask = 0
+    for i in range(switch_conf_bits):
+        n_switch_mask = n_switch_mask << 1 | 1
+        block_mask = block_mask << 1 | 1
+    window_mask_s = bin(window_mask)
+    block_mask_s = bin(block_mask)
+    n_switch_mask_s = bin(n_switch_mask)
+
+    targets = [0 for i in range(n_input)]
+
+    targets[0] = 0
+    targets[1] = 0
+    targets[2] = 0
+    targets[3] = 0
+    targets[4] = 0
+    targets[5] = 0
+    targets[6] = 0
+    targets[7] = 0
+    targets[8] = 0
+    targets[9] = 0
+    targets[10] = 0
+    targets[11] = 0
+    targets[12] = 0
+    targets[13] = 0
+    targets[14] = 0
+    targets[15] = 0
+
+    omega_config = []
+    for l in range(n_layers + n_extra_layers):
+        omega_config.append([])
+        for s in range(n_switches_layer):
+            omega_config[l].append([])
+            for r in range(radix):
+                omega_config[l][s].append([0, 0])
+
+    opf.set_omega_config(omega_config)
+    for i in range(n_input):
+        v, path_config = opf.path_finder(targets[i], i, _Penum.FIRST)
+        if not v:
+            print("impossible routing")
+            exit()
+        path_config_s = bin(path_config)
+        layer_counter = 0
+        for l in range(total_config_bits, window_bits + switch_conf_bits - 1, -switch_conf_bits):
+            block = path_config >> l - window_bits - switch_conf_bits
+            blocks = bin(block)
+            in_n = block >> window_bits & n_switch_mask
+            in_s = bin(in_n)
+            switch_n = block >> switch_conf_bits & n_switch_mask
+            switch_n_s = bin(switch_n)
+            switch_out = block & n_switch_mask
+            switch_out_s = bin(switch_out)
+            omega_config[layer_counter][switch_n][switch_out][0] = 1
+            omega_config[layer_counter][switch_n][switch_out][1] = in_n
+            layer_counter += 1
+        opf.set_omega_config(omega_config)
+        opf.update_base_dot()
+    a = 1
